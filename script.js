@@ -1,101 +1,103 @@
 document.addEventListener("DOMContentLoaded", function () {
 
+    // ==========================================================================
+    // 1. CARROSSEL DE PRODUTOS (Seção "Soluções Modulares")
+    // ==========================================================================
+    const prodSlides = document.querySelectorAll("#product-slides .carousel-slide");
+    const prodDots = document.querySelectorAll("#product-dots .dot");
+    const prodPrev = document.getElementById("prod-prev");
+    const prodNext = document.getElementById("prod-next");
+    let currentProdSlide = 0;
 
-    /* ==========================================================================
-       CARROSSEL DE PRODUTOS
-       Controla os slides, setas de navegação e bolinhas indicadoras
-       ========================================================================== */
+    function showProdSlide(index) {
+        if (prodSlides.length === 0) return;
 
-    const slides    = document.querySelectorAll(".carousel-slide");
-    const dots      = document.querySelectorAll(".dot");
-    const prevBtn   = document.querySelector(".prev-btn");
-    const nextBtn   = document.querySelector(".next-btn");
+        prodSlides.forEach(slide => slide.classList.remove("active"));
+        prodDots.forEach(dot => dot.classList.remove("active"));
 
-    let currentSlide  = 0;
-    let slideInterval;
+        currentProdSlide = (index + prodSlides.length) % prodSlides.length;
 
-    /* Mostra o slide pelo índice informado */
-    function showSlide(index) {
-        if (index >= slides.length) currentSlide = 0;
-        else if (index < 0)         currentSlide = slides.length - 1;
-        else                        currentSlide = index;
-
-        slides.forEach(slide => slide.classList.remove("active"));
-        dots.forEach(dot   => dot.classList.remove("active"));
-
-        slides[currentSlide].classList.add("active");
-        dots[currentSlide].classList.add("active");
+        prodSlides[currentProdSlide].classList.add("active");
+        if (prodDots[currentProdSlide]) {
+            prodDots[currentProdSlide].classList.add("active");
+        }
     }
 
-    function nextSlide() { showSlide(currentSlide + 1); }
-    function prevSlide() { showSlide(currentSlide - 1); }
-
-    /* Reinicia o timer automático ao interagir manualmente */
-    function startInterval() {
-        clearInterval(slideInterval);
-        slideInterval = setInterval(nextSlide, 3500);
+    if (prodNext && prodPrev) {
+        prodNext.addEventListener("click", () => showProdSlide(currentProdSlide + 1));
+        prodPrev.addEventListener("click", () => showProdSlide(currentProdSlide - 1));
     }
 
-    /* Clique nas setas */
-    nextBtn.addEventListener("click", () => { nextSlide(); startInterval(); });
-    prevBtn.addEventListener("click", () => { prevSlide(); startInterval(); });
-
-    /* Clique nas bolinhas */
-    dots.forEach((dot, index) => {
-        dot.addEventListener("click", () => { showSlide(index); startInterval(); });
-    });
-
-    /* Inicia automaticamente */
-    startInterval();
-
-
-    /* ==========================================================================
-       FAQ / ACCORDION
-       Abre e fecha as perguntas com efeito sanfona (um por vez)
-       ========================================================================== */
-
-    const faqItems = document.querySelectorAll(".faq-item");
-
-    faqItems.forEach(item => {
-        const trigger = item.querySelector(".faq-trigger");
-
-        trigger.addEventListener("click", () => {
-            const isOpen = item.classList.contains("active");
-
-            /* Fecha todos os itens abertos */
-            faqItems.forEach(otherItem => otherItem.classList.remove("active"));
-
-            /* Se estava fechado, abre agora */
-            if (!isOpen) item.classList.add("active");
+    prodDots.forEach((dot, idx) => {
+        dot.addEventListener("click", () => {
+            const index = parseInt(dot.getAttribute("data-index") || idx);
+            showProdSlide(index);
         });
     });
 
+    // Suporte a swipe no carrossel (mobile)
+    const slider = document.getElementById("product-slides");
+    if (slider) {
+        let touchStartX = 0;
+        let touchEndX = 0;
 
-    /* ==========================================================================
-       SCROLL SUAVE (NAVEGAÇÃO INTERNA)
-       Aplica rolagem suave em todos os links âncora do menu e botões
-       ========================================================================== */
+        slider.addEventListener("touchstart", (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+        }, { passive: true });
 
-    const internalLinks = document.querySelectorAll('nav a[href^="#"], .btn-saiba-mais[href^="#"]');
+        slider.addEventListener("touchend", (e) => {
+            touchEndX = e.changedTouches[0].screenX;
+            const diff = touchStartX - touchEndX;
+            if (Math.abs(diff) > 40) {
+                if (diff > 0) {
+                    showProdSlide(currentProdSlide + 1);
+                } else {
+                    showProdSlide(currentProdSlide - 1);
+                }
+            }
+        }, { passive: true });
+    }
 
-    internalLinks.forEach(link => {
-        link.addEventListener("click", function (e) {
-            const targetSelector = this.getAttribute("href");
+    // ==========================================================================
+    // 2. ACORDION / FAQ (Seção "Dúvidas Frequentes")
+    // ==========================================================================
+    const faqTriggers = document.querySelectorAll(".faq-trigger");
 
-            /* Ignora links que não apontam para um elemento da página */
-            if (!targetSelector || targetSelector === "#") return;
+    faqTriggers.forEach(trigger => {
+        trigger.addEventListener("click", function () {
+            const content = this.nextElementSibling;
+            const icon = this.querySelector(".faq-icon");
 
-            const targetEl = document.querySelector(targetSelector);
-            if (!targetEl) return;
+            if (content.style.maxHeight) {
+                content.style.maxHeight = null;
+                if (icon) icon.style.transform = "rotate(0deg)";
+            } else {
+                document.querySelectorAll(".faq-content").forEach(c => c.style.maxHeight = null);
+                document.querySelectorAll(".faq-icon").forEach(i => i.style.transform = "rotate(0deg)");
+
+                content.style.maxHeight = content.scrollHeight + "px";
+                if (icon) icon.style.transform = "rotate(45deg)";
+            }
+        });
+    });
+
+    // ==========================================================================
+    // 3. SCROLL SUAVE PARA LINKS — compensa navbar fixa no mobile
+    // ==========================================================================
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            const targetId = this.getAttribute("href");
+            if (targetId === "#") return;
+            const target = document.querySelector(targetId);
+            if (!target) return;
 
             e.preventDefault();
 
-            window.scrollTo({
-                top: targetEl.offsetTop - 20, /* Pequeno respiro acima da seção */
-                behavior: "smooth"
-            });
+            const isMobile = window.innerWidth <= 768;
+            const offset = isMobile ? 70 : 0;
+            const top = target.getBoundingClientRect().top + window.pageYOffset - offset;
+
+            window.scrollTo({ top, behavior: "smooth" });
         });
     });
-
-
-}); /* fim DOMContentLoaded */
+});
